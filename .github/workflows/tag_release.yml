@@ -43,6 +43,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Add these steps for ARM64 Linux cross-compilation
+      - name: Install ARM64 dependencies
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+          sudo apt-get install -y libssl-dev pkg-config
+          sudo apt-get install -y gcc-multilib
+          sudo apt-get install -y crossbuild-essential-arm64
+
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
@@ -50,7 +60,22 @@ jobs:
           target: ${{ matrix.target }}
           override: true
 
-      # [Rest of the previous steps remain the same]
+      - name: Cache Build
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.target }}-
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
       - name: Build project
         uses: actions-rs/cargo@v1
         with:
@@ -60,7 +85,7 @@ jobs:
       - name: Rename binary
         run: |
           mkdir -p artifacts
-          cp target/${{ matrix.target }}/release/${{ env.CARGO_PKG_NAME }} artifacts/${{ matrix.artifact_name }}
+          cp target/${{ matrix.target }}/release/rusticle artifacts/${{ matrix.artifact_name }}
         shell: bash
 
       - name: Upload artifact
