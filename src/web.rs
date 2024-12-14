@@ -1,8 +1,11 @@
 use std::io::Error;
 
-use actix_web::{delete, get, post, web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{
+    delete, get, middleware::Logger, post, web, App, HttpResponse, HttpServer, Responder,
+};
 use deadpool_sqlite::{Config, Manager, Pool};
 use rusqlite; //::{ffi::sqlite3_auto_extension, Connection, Result};
+use serde::Deserialize;
 use sqlite_vec;
 
 // This struct represents state
@@ -12,18 +15,46 @@ struct AppState {
     // table: Mutex<VecTable<String>>, // Using `sqlite_vec` with a generic type
 }
 
-#[post("/collection")]
-async fn create_collection() -> impl Responder {
-    HttpResponse::Ok().body("ASD")
+#[derive(Deserialize)]
+struct CreateCollectionRequest {
+    name: String,
+    vector_size: usize,
 }
 
-#[delete("/collection/{id}")]
-async fn delete_collection() -> impl Responder {
-    HttpResponse::Ok().body("ASD")
+#[post("/collection")]
+async fn create_collection(
+    data: web::Data<AppState>,
+    req: web::Json<CreateCollectionRequest>,
+) -> impl Responder {
+    let conn = data.pool.get().await.unwrap();
+    let query = format!(
+        "CREATE VIRTUAL TABLE {} using vec0(key TEXT, vec float[{}]);",
+        req.name, req.vector_size
+    );
+
+    let result = conn.interact(move |conn| conn.execute(&query, ())).await;
+
+    match result {
+        Ok(_) => HttpResponse::Ok().body("Collection created successfully"),
+        Err(_) => HttpResponse::InternalServerError().body("Failed to create collection"),
+    }
+}
+#[delete("/collection/{name}")]
+async fn delete_collection(data: web::Data<AppState>, path: web::Path<String>) -> impl Responder {
+    let collection_name = path.into_inner();
+    let conn = data.pool.get().await.unwrap();
+    let query = format!("DROP TABLE IF EXISTS {}", collection_name);
+
+    let result = conn.interact(move |conn| conn.execute(&query, ())).await;
+
+    match result {
+        Ok(_) => HttpResponse::Ok().body("Collection deleted successfully"),
+        Err(_) => HttpResponse::InternalServerError().body("Failed to delete collection"),
+    }
 }
 
 #[get("/")]
-async fn hello(data: web::Data<AppState>) -> impl Responder {
+async fn index(data: web::Data<AppState>) -> impl Responder {
     let conn = data.pool.get().await.unwrap();
     let result: i64 = conn
         .interact(|conn| {
@@ -35,43 +66,33 @@ async fn hello(data: web::Data<AppState>) -> impl Responder {
         .await
         .unwrap()
         .unwrap();
-    // let db = data.database;
-    // db.execute("Select * from ASD;", "");
-    HttpResponse::Ok().body("ADS")
+    HttpResponse::Ok().body(result.to_string())
 }
 
 #[actix_web::main]
-pub async fn web_entry() -> std::io::Result<()> {
+pub async fn web_entry(config: crate::config::Config) -> std::io::Result<()> {
     unsafe {
         rusqlite::ffi::sqlite3_auto_extension(Some(std::mem::transmute(
             sqlite_vec::sqlite3_vec_init as *const (),
         )));
     }
-
     // Configure SQLite connection pool
-    let cfg = Config::new("db.sqlite3");
+    let cfg = Config::new(config.database.path);
     let manager = Manager::from_config(&cfg, deadpool_sqlite::Runtime::Tokio1);
     let pool = Pool::builder(manager).build().unwrap();
 
-    let conn = &pool.get().await.unwrap();
-    conn.interact(|conn| {
-        conn.execute(
-            "CREATE VIRTUAL TABLE IF NOT EXISTS vector_store using vec0(key TEXT, vec float[8]);",
-            (),
-        )
-        .unwrap();
-    })
-    .await
-    .unwrap();
-
     let state = AppState { pool };
+
     // return Err(std::io::Error::new(std::io::ErrorKind::Other, "ASD"));
     HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(state.clone()))
-            .service(hello)
+            .service(create_collection)
+            .service(delete_collection)
+            .service(index)
+            .wrap(Logger::default())
     })
-    .bind(("127.0.0.1", 8080))?
+    .bind((config.server.host, config.server.port))?
     .run()
     .await
 }

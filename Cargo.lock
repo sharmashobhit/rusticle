@@ -2453,6 +2453,7 @@ dependencies = [
  "deadpool-sqlite",
  "fastembed",
  "rusqlite",
+ "serde",
  "sqlite-vec",
  "toml",
 ]
