@@ -4,7 +4,7 @@ use std::fs;
 use std::path::Path;
 use toml;
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub(crate) struct Config {
     #[serde(default)]
     pub(crate) server: Server,
@@ -14,7 +14,7 @@ pub(crate) struct Config {
     pub(crate) embedding: Embedding,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub(crate) struct Server {
     #[serde(default = "default_host")]
     pub(crate) host: String,
@@ -22,13 +22,13 @@ pub(crate) struct Server {
     pub(crate) port: u16,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub(crate) struct Database {
     #[serde(default = "default_db_path")]
     pub(crate) path: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub(crate) struct Embedding {
     #[serde(default = "default_model", deserialize_with = "deserialize_model")]
     pub(crate) model: fastembed::EmbeddingModel,

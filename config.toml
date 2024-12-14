@@ -5,5 +5,5 @@
 [database]
 path = "db.sqlite3"
 
-[embedding]
-modeal = "nomic-embed-text-v1.5-q"
+# [embedding]
+# modeal = "nomic-embed-text-v1.5-q"

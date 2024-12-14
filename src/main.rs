@@ -1,6 +1,6 @@
 mod config;
+mod embedding;
 mod web;
-
 pub use crate::web::web_entry;
 
 use clap::{arg, Command};
