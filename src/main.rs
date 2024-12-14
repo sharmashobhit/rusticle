@@ -45,3 +45,51 @@ fn main() {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_cli_serve_defaults() {
+        let app = cli();
+        let matches = app.try_get_matches_from(vec!["simgen", "serve"]).unwrap();
+
+        if let Some(("serve", sub_m)) = matches.subcommand() {
+            assert_eq!(sub_m.get_one::<String>("config").unwrap(), "config.toml");
+            assert_eq!(sub_m.get_one::<String>("host"), None);
+            assert_eq!(sub_m.get_one::<u16>("port"), None);
+        }
+    }
+
+    #[test]
+    fn test_cli_serve_with_args() {
+        let app = cli();
+        let matches = app
+            .try_get_matches_from(vec![
+                "simgen",
+                "serve",
+                "--port",
+                "8080",
+                "--host",
+                "localhost",
+                "--config",
+                "test.toml",
+            ])
+            .unwrap();
+
+        if let Some(("serve", sub_m)) = matches.subcommand() {
+            assert_eq!(sub_m.get_one::<String>("config").unwrap(), "test.toml");
+            assert_eq!(sub_m.get_one::<String>("host").unwrap(), "localhost");
+            assert_eq!(sub_m.get_one::<u16>("port").unwrap(), &8080u16);
+        }
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_cli_invalid_port() {
+        let app = cli();
+        app.try_get_matches_from(vec!["simgen", "serve", "--port", "999999"])
+            .unwrap();
+    }
+}

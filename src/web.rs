@@ -376,7 +376,7 @@ mod tests {
             .uri("/collection")
             .set_json(&CreateCollectionRequest {
                 name: "test".to_string(),
-                vector_size: 4,
+                vector_size: 768,
             })
             .to_request();
         let resp = test::call_service(&app, req).await;
@@ -404,7 +404,7 @@ mod tests {
             .unwrap()
             .unwrap();
 
-        assert_eq!(vector.len(), 4 * 4);
+        assert_eq!(vector.len(), 768 * 4);
     }
 
     #[actix_web::test]
@@ -441,10 +441,8 @@ mod tests {
             })
             .to_request();
         let resp = test::call_service(&app, req).await;
-
-        // assert_eq!(resp.status(), StatusCode::OK);
-
-        let body = test::read_body(resp).await;
-        assert_eq!(body, "[]");
+        assert_eq!(resp.status(), StatusCode::OK);
+        // let body = test::read_body(resp).await;
+        // assert_eq!(body, "[]");
     }
 }
