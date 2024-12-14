@@ -6,8 +6,8 @@ pub use crate::web::web_entry;
 use clap::{arg, Command};
 
 fn cli() -> Command {
-    Command::new("simgen")
-        .about("A simple portable vector database for all your needs")
+    Command::new("rusticle")
+        .about("A micro vector database in a single binary")
         .subcommand_required(true)
         .arg_required_else_help(true)
         .allow_external_subcommands(true)
@@ -53,7 +53,7 @@ mod tests {
     #[test]
     fn test_cli_serve_defaults() {
         let app = cli();
-        let matches = app.try_get_matches_from(vec!["simgen", "serve"]).unwrap();
+        let matches = app.try_get_matches_from(vec!["rusticle", "serve"]).unwrap();
 
         if let Some(("serve", sub_m)) = matches.subcommand() {
             assert_eq!(sub_m.get_one::<String>("config").unwrap(), "config.toml");
@@ -67,7 +67,7 @@ mod tests {
         let app = cli();
         let matches = app
             .try_get_matches_from(vec![
-                "simgen",
+                "rusticle",
                 "serve",
                 "--port",
                 "8080",
@@ -89,7 +89,7 @@ mod tests {
     #[should_panic]
     fn test_cli_invalid_port() {
         let app = cli();
-        app.try_get_matches_from(vec!["simgen", "serve", "--port", "999999"])
+        app.try_get_matches_from(vec!["rusticle", "serve", "--port", "999999"])
             .unwrap();
     }
 }
