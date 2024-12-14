@@ -1,3 +1,4 @@
+use log::{error, info};
 use std::io::Error;
 
 use actix_web::{
@@ -26,6 +27,7 @@ async fn create_collection(
     data: web::Data<AppState>,
     req: web::Json<CreateCollectionRequest>,
 ) -> impl Responder {
+    info!("Creating collection: {}", req.name);
     let conn = data.pool.get().await.unwrap();
     let query = format!(
         "CREATE VIRTUAL TABLE {} using vec0(key TEXT, vec float[{}]);",
@@ -35,10 +37,17 @@ async fn create_collection(
     let result = conn.interact(move |conn| conn.execute(&query, ())).await;
 
     match result {
-        Ok(_) => HttpResponse::Ok().body("Collection created successfully"),
-        Err(_) => HttpResponse::InternalServerError().body("Failed to create collection"),
+        Ok(_) => {
+            info!("Successfully created collection: {}", req.name);
+            HttpResponse::Ok().body("Collection created successfully")
+        }
+        Err(e) => {
+            error!("Failed to create collection {}: {}", req.name, e);
+            HttpResponse::InternalServerError().body("Failed to create collection")
+        }
     }
 }
+
 #[delete("/collection/{name}")]
 async fn delete_collection(data: web::Data<AppState>, path: web::Path<String>) -> impl Responder {
     let collection_name = path.into_inner();
@@ -71,6 +80,12 @@ async fn index(data: web::Data<AppState>) -> impl Responder {
 
 #[actix_web::main]
 pub async fn web_entry(config: crate::config::Config) -> std::io::Result<()> {
+    env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
+    info!(
+        "Starting web server at {}:{}",
+        config.server.host, config.server.port
+    );
+
     unsafe {
         rusqlite::ffi::sqlite3_auto_extension(Some(std::mem::transmute(
             sqlite_vec::sqlite3_vec_init as *const (),
